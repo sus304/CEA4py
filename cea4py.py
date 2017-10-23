@@ -49,7 +49,8 @@ import csv
 
 # 環境によって都度変更のこと
 if 'Windows' == platform.system():
-    cmd = 'C:\\CEA\\fCEA2.exe'
+    # cmd = 'C:\\CEA\\fCEA2.exe'
+    cmd = 'FCEA2.exe'
 
 if 'Darwin' == platform.system():
     cmd = '~/Applications/NASAcea/FCEA2'
@@ -76,21 +77,21 @@ def cea_fac (OF, Pc, AR, CR, pa = 0.101325):
         plot p ispfz ivacfz cffz
     end
     """ % (OF, Pc*10, AR, CR, fuel, fuel_temperature)
-# fac オプションを付けると出力は inj, chamber, throat, exit の順になる．
-# exit の指定は出口圧力比(pi/p)，開口比(suparまたはsup,ae/at)などの方法があり，複数指定すると
-# exit の出力も複数になるが，ここではある決まった(作った)ノズルに対する性能を見たいので開口比で指定．
-# CR はac/at オプションで指定．
-# 元記事同様，plotファイルから数字を読み出すがispやcfなどは末尾にfzを付けないとfrozen条件の値ではなく
-# equilibrium 条件の値が出力されてしまうので注意．
+    # fac オプションを付けると出力は inj, chamber, throat, exit の順になる．
+    # exit の指定は出口圧力比(pi/p)，開口比(suparまたはsup,ae/at)などの方法があり，複数指定すると
+    # exit の出力も複数になるが，ここではある決まった(作った)ノズルに対する性能を見たいので開口比で指定．
+    # CR はac/at オプションで指定．
+    # 元記事同様，plotファイルから数字を読み出すがispやcfなどは末尾にfzを付けないとfrozen条件の値ではなく
+    # equilibrium 条件の値が出力されてしまうので注意．
 
     f = open(input_file, 'w') # 書き込みモードで開く
     f.write(str) # 引数の文字列をファイルに書き込む
     f.close() # ファイルを閉じる
 
-# CEA実行ファイルへのパスを示す文字列cmdは冒頭のimport後に定義している
+    # CEA実行ファイルへのパスを示す文字列cmdは冒頭のimport後に定義している
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-# さっき作った.inp ファイルの，".inp"を除いたファイル名をCEAの標準入力に渡す
-# なぜ argv で渡せるようにしてくれなかったのか
+    # さっき作った.inp ファイルの，".inp"を除いたファイル名をCEAの標準入力に渡す
+    # なぜ argv で渡せるようにしてくれなかったのか
     if 'Windows' == platform.system():
         p.communicate(file_name + b'\n') # Win環境ではコマンド末尾に¥nを付けないとバグる
     if 'Darwin' == platform.system():
@@ -109,6 +110,74 @@ def cea_fac (OF, Pc, AR, CR, pa = 0.101325):
                 row.remove("")
             # print row          # 1行づつlist表示
             if index == 3:    # インジェクタ，チャンバ，スロートときてノズル出口は4行目
+                p = float(row[0])
+                isp_opt = float(row[1])
+                ivac = float(row[2])
+                cf_opt = float(row[3])
+				# CEA は開口比を与えた時には大気圧によらず最適膨張(= 圧力推力なし)を仮定して
+				# Ispやcfを出してくる．従って，「ある大気圧下での性能(海面高度含む)」を知りたい時は
+				# 圧力推力項を加減してやる必要がある．それが以下の3式．教科書通り．
+                cf = cf_opt + AR / Pc * (p/10 - pa)
+                cf = max(0, cf)
+                isp = isp_opt * cf / cf_opt
+            index += 1
+        data = [Pc, OF, isp, ivac, AR, cf]
+
+    # ファイル削除
+    os.remove(input_file)
+    os.remove(output_file)
+
+    return data
+
+def cea_iac (OF, Pc, AR, pa = 0.101325):
+    file_name = b'ceatemp' # 一時的に作られるファイル
+
+    # ---- .inpファイル作り ----
+    input_file = file_name + b'.inp'
+    str = """problem    o/f=%.2f,
+        rocket  equilibrium iac frozen  nfz=3
+      p,bar = %.1f
+      sup,ae/at= %.3f
+
+    react
+      fuel=%s wt=100 t,k=%d
+      oxid=O2(L) wt=100  t,k=90.17
+    output
+        plot p ispfz ivacfz cffz
+    end
+    """ % (OF, Pc*10, AR, fuel, fuel_temperature)
+    # iac オプションを付けると出力は inj, throat, exit の順になる．
+    # exit の指定は出口圧力比(pi/p)，開口比(suparまたはsup,ae/at)などの方法があり，複数指定すると
+    # exit の出力も複数になるが，ここではある決まった(作った)ノズルに対する性能を見たいので開口比で指定．
+    # 元記事同様，plotファイルから数字を読み出すがispやcfなどは末尾にfzを付けないとfrozen条件の値ではなく
+    # equilibrium 条件の値が出力されてしまうので注意．
+
+    f = open(input_file, 'w') # 書き込みモードで開く
+    f.write(str) # 引数の文字列をファイルに書き込む
+    f.close() # ファイルを閉じる
+
+    # CEA実行ファイルへのパスを示す文字列cmdは冒頭のimport後に定義している
+    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    # さっき作った.inp ファイルの，".inp"を除いたファイル名をCEAの標準入力に渡す
+    # なぜ argv で渡せるようにしてくれなかったのか
+    if 'Windows' == platform.system():
+        p.communicate(file_name + b'\n') # Win環境ではコマンド末尾に¥nを付けないとバグる
+    if 'Darwin' == platform.system():
+        p.communicate(file_name)
+
+    # ---- .pltファイル読み取り ----
+    output_file = file_name + b'.plt'
+
+    with open(output_file, 'r') as f:
+        reader = csv.reader(f, delimiter=' ')
+        header = next(reader)  # ヘッダーの読み飛ばし
+
+        index = 0
+        for row in reader:
+            while row.count("") > 0:
+                row.remove("")
+            # print row          # 1行づつlist表示
+            if index == 2:    # インジェクタ，スロートときてノズル出口は3行目
                 p = float(row[0])
                 isp_opt = float(row[1])
                 ivac = float(row[2])
@@ -166,6 +235,7 @@ if __name__ == '__main__': # テスト用．これ以降がなくても他ファ
         k = 0
         for AR in ar_array1:
             data = cea_fac(OF = 2, Pc = Pc, AR = AR, CR = 4) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
+            # data = cea_iac(OF = 2, Pc = Pc, AR = AR) # 昔の人が見たら発狂しそうな記法 O/Fは適当
             print (data)
             vsar_data_array[k] = np.array(data)
             k+=1
@@ -202,6 +272,7 @@ if __name__ == '__main__': # テスト用．これ以降がなくても他ファ
         k = 0
         for Pc in pc_array2:
             data = cea_fac(OF = 2, Pc = Pc, AR = AR, CR = 4) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
+            # data = cea_iac(OF = 2, Pc = Pc, AR = AR) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
             print (data)
             vspc_data_array[k] = np.array(data)
             k+=1
@@ -236,6 +307,7 @@ if __name__ == '__main__': # テスト用．これ以降がなくても他ファ
         k = 0
         for OF in of_array3:
             data = cea_fac(OF = OF, Pc = 5.0, AR = AR, CR = 4) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
+            # data = cea_iac(OF = OF, Pc = 5.0, AR = AR) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
             print (data)
             vsof_data_array[k] = np.array(data)
             k+=1
@@ -272,6 +344,7 @@ if __name__ == '__main__': # テスト用．これ以降がなくても他ファ
         k = 0
         for pa in pa_array4:
             data = cea_fac(OF = 1.48, Pc = 1., AR = AR, CR = 4, pa = pa) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
+            # data = cea_iac(OF = 1.48, Pc = 1., AR = AR, pa = pa) # 昔の人が見たら発狂しそうな記法 CRとO/Fは適当
             print (data)
             vspa_data_array[k] = np.array(data)
             k+=1
