@@ -1,0 +1,40 @@
+{
+	"FuelCEA":{
+		"Component-1":{
+			"exist": true,
+			"Name": "wax",
+			"Mass Ratio [%]": 100,
+			"Enthalpy [kJ/mol]": -1000.0,
+			"C": 10,
+			"H": 10,
+			"O": 10
+		},
+		"Component-2":{
+			"exist": false,
+			"Name": "sugar",
+			"Mass Ratio [%]": 2,
+			"Enthalpy [kJ/mol]": -100.0,
+			"C": 10,
+			"H": 10,
+			"O": 10
+		},
+		"Component-3":{
+			"exist": false,
+			"Name": "sugar",
+			"Mass Ratio [%]": 2,
+			"Enthalpy [kJ/mol]": -100.0,
+			"C": 10,
+			"H": 10,
+			"O": 10
+		},
+		"Component-4":{
+			"exist": false,
+			"Name": "sugar",
+			"Mass Ratio [%]": 2,
+			"Enthalpy [kJ/mol]": -100.0,
+			"C": 10,
+			"H": 10,
+			"O": 10
+		}
+	}
+}

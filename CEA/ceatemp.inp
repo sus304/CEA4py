@@ -1,0 +1,14 @@
+problem
+o/f=10.5,
+rocket frozen nfz=2
+p,bar=98.0
+sup,ae/at=3.49
+react
+oxid=N2O wt=100 t,k=298.15
+fuel=Himic2095 wt=92.5 t,k=298.15
+h,kj/mol=-1315.2 C 44 H 90 O 0
+fuel=stearic-acid wt=7.5 t,k=298.15
+h,kj/mol=-948.3 C 18 H 36 O 3
+output
+plot p ispfz ivacfz cffz o/f son machfz
+end
